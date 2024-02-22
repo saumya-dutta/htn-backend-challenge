@@ -1,11 +1,11 @@
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
-
-const port = process.env.PORT || 3000;
+const fs = require('fs');
 
 const app = express();
+const port = 3000;
 
-// Database initilization - inserting JSON rows into hackers.db
+// Create a connection to the SQLite database
 const db = new sqlite3.Database('./hackers.db');
 
 // Read the JSON data file
@@ -49,11 +49,7 @@ db.serialize(() => {
     insertData();
 });
 
-
-app.get("/", (req, res) => {
-    res.send("Hello World!");
-});
-
+// Start the Express server
 app.listen(port, () => {
-    console.log(`Example REST Express app listening at http://localhost:3000`);
+    console.log(`Server is running on http://localhost:${port}`);
 });
