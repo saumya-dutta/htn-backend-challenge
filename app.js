@@ -5,6 +5,9 @@ const port = process.env.PORT || 3000;
 
 const app = express();
 
+const fs = require('fs');
+
+
 // Database initilization - inserting JSON rows into hackers.db
 const db = new sqlite3.Database('./hackers.db');
 
@@ -17,7 +20,7 @@ function insertData() {
         const { name, company, email, phone, skills } = hacker;
 
         // Insert hacker data into 'hackers' table
-        db.run(`INSERT INTO hackers (name, company, email, phone) 
+        db.run(`INSERT INTO user_profiles (name, company, email, phone) 
                 VALUES (?, ?, ?, ?)`, [name, company, email, phone], function (err) {
             if (err) {
                 console.error('Error inserting hacker:', err);
@@ -29,7 +32,7 @@ function insertData() {
             // Insert skills data into 'skills' table
             skills.forEach(skill => {
                 const { skill: skillName, rating } = skill;
-                db.run(`INSERT INTO skills (hacker_id, skill, rating) 
+                db.run(`INSERT INTO user_skills (hacker_id, skill, rating) 
                         VALUES (?, ?, ?)`, [hackerId, skillName, rating], function (err) {
                     if (err) {
                         console.error('Error inserting skill:', err);
@@ -43,8 +46,8 @@ function insertData() {
 
 // Call the insertData function to insert the data when the server starts
 db.serialize(() => {
-    db.run('CREATE TABLE IF NOT EXISTS hackers (id INTEGER PRIMARY KEY, name TEXT, company TEXT, email TEXT, phone TEXT)');
-    db.run('CREATE TABLE IF NOT EXISTS skills (hacker_id INTEGER, skill TEXT, rating INTEGER, FOREIGN KEY (hacker_id) REFERENCES hackers(id))');
+    db.run('CREATE TABLE IF NOT EXISTS user_profiles (id INTEGER PRIMARY KEY, name TEXT, company TEXT, email TEXT, phone TEXT)');
+    db.run('CREATE TABLE IF NOT EXISTS user_skills (hacker_id INTEGER, skill TEXT, rating INTEGER, FOREIGN KEY (hacker_id) REFERENCES hackers(id))');
     insertData();
 });
 
@@ -61,11 +64,12 @@ app.get('/all-users', (req, res) => {
              user_profiles.email, user_profiles.phone,
              user_skills.skill, user_skills.rating
       FROM user_profiles
-      INNER JOIN user_skills ON user_profiles.id = user_skills.user_id
+      INNER JOIN user_skills ON user_profiles.id = user_skills.hacker_id
     `;
 
     db.all(query, [], (err, rows) => {
         if (err) {
+            console.log(err);
             res.status(500).json({ error: 'Error' });
             return;
         }
@@ -88,8 +92,8 @@ app.get('/all-users', (req, res) => {
         // Convert the object to an array of users
         const usersArray = Object.values(users);
         console.log(usersArray);
-		let string = JSON.stringify(usersArray);
-		res.send({ express: string });
+        let string = JSON.stringify(usersArray);
+        res.send({ express: string });
         // res.json(usersArray);
     });
 });
@@ -103,7 +107,7 @@ app.get('/user/:id', (req, res) => {
                user_profiles.email, user_profiles.phone,
                user_skills.skill, user_skills.rating
         FROM user_profiles
-        INNER JOIN user_skills ON user_profiles.id = user_skills.user_id
+        INNER JOIN user_skills ON user_profiles.id = user_skills.hacker_id
         WHERE user_profiles.id = ?
     `;
 
@@ -144,18 +148,18 @@ app.put('/user/:id', (req, res) => {
     `;
 
     db.run(query, [userData.name, userData.company, userData.email, userData.phone, userId],
-            (err) => {
-                if (err) {
-                    res.status(500).json({ error: 'Error' });
-                    return;
-                }
-                res.send({ message: 'User data updated' });
-            });
+        (err) => {
+            if (err) {
+                res.status(500).json({ error: 'Error' });
+                return;
+            }
+            res.send({ message: 'User data updated' });
+        });
 });
 
 // Skills Endpoint
 app.get('/skills/frequency', (req, res) => {
-    
+
     const query = `
         SELECT skill, COUNT(DISTINCT hacker_id) as frequency
         FROM skills
@@ -169,8 +173,8 @@ app.get('/skills/frequency', (req, res) => {
             return;
         }
         console.log(rows);
-		let string = JSON.stringify(rows);
-		res.send({ express: rows });
+        let string = JSON.stringify(rows);
+        res.send({ express: rows });
     });
 });
 
